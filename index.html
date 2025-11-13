@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gerador Load Balance Mikrotik (VRF + RotaCross)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f172a;
+      margin: 0;
+      padding: 0;
+      color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      max-width: 900px;
+      width: 100%;
+      padding: 24px 16px 64px;
+    }
+    .card {
+      background: #020617;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+      border: 1px solid #1f2937;
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.6rem;
+    }
+    h2 {
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: #9ca3af;
+      margin-bottom: 16px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .field-group {
+      margin-bottom: 18px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #020617;
+      border: 1px solid #111827;
+    }
+    label {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      display: block;
+      margin-bottom: 4px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #22c55e;
+      box-shadow: 0 0 0 1px rgba(34,197,94,0.5);
+    }
+    .btn {
+      display: inline-block;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg,#22c55e,#16a34a);
+      color: #022c22;
+      margin-top: 4px;
+    }
+    .btn:hover {
+      filter: brightness(1.05);
+    }
+    textarea#script {
+      min-height: 260px;
+      font-family: "Fira Code", monospace;
+      font-size: 0.8rem;
+      white-space: pre;
+    }
+    .helper {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #022c22;
+      color: #bbf7d0;
+      border: 1px solid #16a34a;
+      margin-bottom: 10px;
+    }
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Gerador Load Balance Mikrotik</h1>
+      <div class="subtitle">
+        Saída com <strong>VRF + RotaCross + PCC</strong> para 2 links (Load Balance + Failover).
+      </div>
+
+      <form id="form-gerador">
+        <!-- Identificação -->
+        <div class="field-group">
+          <div class="section-title">
+            <h2>Identificação do Sistema</h2>
+            <span class="badge">RouterOS v6 – VRF + RotaCross</span>
+          </div>
+          <label for="cliente">Nome do sistema/cliente</label>
+          <input id="cliente" type="text" placeholder="Ex: Load Balance Filial Fortaleza">
+        </div>
+
+        <!-- LINK 1 -->
+        <div class="field-group">
+          <h2>Link 1 (principal)</h2>
+          <div class="grid">
+            <div>
+              <label for="l1_interface">Interface (física ou VLAN)</label>
+              <input id="l1_interface" type="text" placeholder="Ex: ether1 ou vlan100">
+            </div>
+            <div>
+              <label for="l1_tipo">Tipo de conexão</label>
+              <select id="l1_tipo">
+                <option value="dhcp">DHCP</option>
+                <option value="pppoe">PPPoE</option>
+              </select>
+            </div>
+            <div>
+              <label for="l1_vlan">VLAN (opcional – cria subinterface)</label>
+              <input id="l1_vlan" type="text" placeholder="Ex: 100">
+            </div>
+            <div>
+              <label for="l1_vel">Velocidade (Mbps)</label>
+              <input id="l1_vel" type="number" placeholder="Ex: 200">
+            </div>
+            <div>
+              <label for="l1_monitor">IP monitor (failover)</label>
+              <input id="l1_monitor" type="text" placeholder="Ex: 1.1.1.1">
+            </div>
+            <div>
+              <label for="l1_operadora">Operadora</label>
+              <input id="l1_operadora" type="text" placeholder="Ex: VIVO">
+            </div>
+          </div>
+          <div class="grid">
+            <div>
+              <label for="l1_user">Usuário PPPoE (se aplicável)</label>
+              <input id="l1_user" type="text" placeholder="usuario@provedor.com">
+            </div>
+            <div>
+              <label for="l1_senha">Senha PPPoE</label>
+              <input id="l1_senha" type="password" placeholder="••••••••">
+            </div>
+          </div>
+          <div class="helper">
+            Para PPPoE, informe a interface física em que o discador será criado (ex: ether1).  
+            Para DHCP, o gateway será herdado automaticamente pela interface.
+          </div>
+        </div>
+
+        <!-- LINK 2 -->
+        <div class="field-group">
+          <h2>Link 2 (secundário)</h2>
+          <div class="grid">
+            <div>
+              <label for="l2_interface">Interface (física ou VLAN)</label>
+              <input id="l2_interface" type="text" placeholder="Ex: ether2 ou vlan200">
+            </div>
+            <div>
+              <label for="l2_tipo">Tipo de conexão</label>
+              <select id="l2_tipo">
+                <option value="dhcp">DHCP</option>
+                <option value="pppoe">PPPoE</option>
+              </select>
+            </div>
+            <div>
+              <label for="l2_vlan">VLAN (opcional – cria subinterface)</label>
+              <input id="l2_vlan" type="text" placeholder="Ex: 200">
+            </div>
+            <div>
+              <label for="l2_vel">Velocidade (Mbps)</label>
+              <input id="l2_vel" type="number" placeholder="Ex: 100">
+            </div>
+            <div>
+              <label for="l2_monitor">IP monitor (failover)</label>
+              <input id="l2_monitor" type="text" placeholder="Ex: 8.8.8.8">
+            </div>
+            <div>
+              <label for="l2_operadora">Operadora</label>
+              <input id="l2_operadora" type="text" placeholder="Ex: CLARO">
+            </div>
+          </div>
+          <div class="grid">
+            <div>
+              <label for="l2_user">Usuário PPPoE (se aplicável)</label>
+              <input id="l2_user" type="text" placeholder="usuario@provedor.com">
+            </div>
+            <div>
+              <label for="l2_senha">Senha PPPoE</label>
+              <input id="l2_senha" type="password" placeholder="••••••••">
+            </div>
+          </div>
+        </div>
+
+        <!-- LAN -->
+        <div class="field-group">
+          <h2>Configuração de LAN</h2>
+          <div class="grid">
+            <div>
+              <label for="lan_interface">Interface LAN (bridge)</label>
+              <input id="lan_interface" type="text" value="bridge-lan">
+            </div>
+            <div>
+              <label for="lan_rede">Rede LAN</label>
+              <input id="lan_rede" type="text" value="192.168.10.0/24">
+            </div>
+            <div>
+              <label for="lan_gateway">IP da RB na LAN (gateway)</label>
+              <input id="lan_gateway" type="text" value="192.168.10.1">
+            </div>
+          </div>
+          <div class="helper">
+            A rota cross usará este IP para dizer aos VRFs como voltar para a rede LAN.
+          </div>
+        </div>
+
+        <button type="submit" class="btn">Gerar Script Mikrotik</button>
+      </form>
+
+      <div class="field-group" style="margin-top:20px;">
+        <h2>Script Gerado</h2>
+        <textarea id="script" readonly></textarea>
+        <div class="helper">
+          Copie e cole este script no Terminal do Mikrotik. Sempre teste em laboratório antes de usar em produção.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function getLink(prefix) {
+      return {
+        iface: document.getElementById(prefix + "_interface").value.trim(),
+        tipo: document.getElementById(prefix + "_tipo").value,
+        vlan: document.getElementById(prefix + "_vlan").value.trim(),
+        vel: document.getElementById(prefix + "_vel").value.trim(),
+        monitor: document.getElementById(prefix + "_monitor").value.trim(),
+        operadora: document.getElementById(prefix + "_operadora").value.trim(),
+        user: document.getElementById(prefix + "_user").value.trim(),
+        senha: document.getElementById(prefix + "_senha").value.trim()
+      };
+    }
+
+    // configura interface do link (VLAN + PPPoE/DHCP) e devolve nome final da interface WAN
+    function gerarBlocoLink(link, idx) {
+      const n = idx; // 1 ou 2
+      let s = "";
+      const commentBase = `LINK${n} - ${link.operadora || "Operadora"}`;
+
+      // VLAN opcional – cria subinterface
+      let ifaceFinal = link.iface;
+      if (link.vlan) {
+        s += `\n/interface vlan\n`;
+        s += `add name=vlan${n}-${link.vlan} interface=${link.iface} vlan-id=${link.vlan} comment="${commentBase} VLAN"\n`;
+        ifaceFinal = `vlan${n}-${link.vlan}`;
+      }
+
+      // DHCP ou PPPoE
+      if (link.tipo === "dhcp") {
+        s += `\n/ip dhcp-client\n`;
+        s += `add interface=${ifaceFinal} use-peer-dns=no add-default-route=yes disabled=no comment="${commentBase} DHCP"\n`;
+      } else if (link.tipo === "pppoe") {
+        const pppName = `pppoe-link${n}`;
+        s += `\n/interface pppoe-client\n`;
+        s += `add name=${pppName} interface=${ifaceFinal} user="${link.user}" password="${link.senha}" disabled=no add-default-route=yes use-peer-dns=no comment="${commentBase} PPPoE"\n`;
+        ifaceFinal = pppName;
+      }
+
+      s += `\n# Velocidade informada: ${link.vel || "N/D"} Mbps | Monitor: ${link.monitor || "sem monitor"}\n`;
+
+      return { texto: s, ifaceFinal: ifaceFinal, commentBase: commentBase };
+    }
+
+    function gerarScript() {
+      const cliente = document.getElementById("cliente").value.trim() || "Sem nome";
+      const lanIface = document.getElementById("lan_interface").value.trim() || "bridge-lan";
+      const lanRede = document.getElementById("lan_rede").value.trim() || "192.168.10.0/24";
+      const lanGateway = document.getElementById("lan_gateway").value.trim() || "192.168.10.1";
+
+      const l1 = getLink("l1");
+      const l2 = getLink("l2");
+
+      let script = "";
+      script += `# =====================================\n`;
+      script += `#  LOAD BALANCE + FAILOVER + VRF + ROTA CROSS\n`;
+      script += `#  Gerado para: ${cliente}\n`;
+      script += `# =====================================\n\n`;
+
+      // Blocos dos links (interfaces / PPPoE / DHCP)
+      const b1 = gerarBlocoLink(l1, 1);
+      const b2 = gerarBlocoLink(l2, 2);
+      script += b1.texto;
+      script += b2.texto;
+
+      // NAT
+      script += `\n# =====================================\n# NAT (masquerade)\n# =====================================\n`;
+      script += `/ip firewall nat\n`;
+      script += `add chain=srcnat out-interface=${b1.ifaceFinal} action=masquerade comment="NAT LINK1"\n`;
+      script += `add chain=srcnat out-interface=${b2.ifaceFinal} action=masquerade comment="NAT LINK2"\n`;
+
+      // VRFs
+      script += `\n# =====================================\n# VRFs\n# =====================================\n`;
+      script += `/ip route vrf\n`;
+      script += `add routing-mark=to-LINK1 interfaces=${b1.ifaceFinal},${lanIface} comment="VRF LINK1"\n`;
+      script += `add routing-mark=to-LINK2 interfaces=${b2.ifaceFinal},${lanIface} comment="VRF LINK2"\n`;
+
+      // Mangle – PCC + marcação de rota
+      script += `\n# =====================================\n# Mangle – PCC + marcação de rota\n# =====================================\n`;
+      script += `/ip firewall mangle\n`;
+      script += `add chain=prerouting in-interface=${lanIface} connection-mark=no-mark \\\n`;
+      script += `    action=mark-connection new-connection-mark=to-LINK1 passthrough=yes \\\n`;
+      script += `    per-connection-classifier=both-addresses-and-ports:2/0 comment="PCC -> LINK1"\n`;
+      script += `add chain=prerouting in-interface=${lanIface} connection-mark=no-mark \\\n`;
+      script += `    action=mark-connection new-connection-mark=to-LINK2 passthrough=yes \\\n`;
+      script += `    per-connection-classifier=both-addresses-and-ports:2/1 comment="PCC -> LINK2"\n`;
+      script += `add chain=prerouting in-interface=${lanIface} connection-mark=to-LINK1 \\\n`;
+      script += `    action=mark-routing new-routing-mark=to-LINK1 passthrough=no\n`;
+      script += `add chain=prerouting in-interface=${lanIface} connection-mark=to-LINK2 \\\n`;
+      script += `    action=mark-routing new-routing-mark=to-LINK2 passthrough=no\n`;
+      script += `add chain=output connection-mark=no-mark action=mark-routing \\\n`;
+      script += `    new-routing-mark=to-LINK1 passthrough=no comment="Router -> LINK1 por padrão"\n`;
+
+      // Rotas com routing-mark (VRFs)
+      script += `\n# =====================================\n# Rotas dentro dos VRFs (routing-mark)\n# =====================================\n`;
+      script += `/ip route\n`;
+      script += `add dst-address=0.0.0.0/0 gateway=${b1.ifaceFinal} routing-mark=to-LINK1 \\\n`;
+      script += `    check-gateway=ping comment="Default VRF LINK1"\n`;
+      script += `add dst-address=0.0.0.0/0 gateway=${b2.ifaceFinal} routing-mark=to-LINK2 \\\n`;
+      script += `    check-gateway=ping comment="Default VRF LINK2"\n`;
+
+      // Rota Cross – LAN em ambos VRFs
+      script += `\n# ---------- Rota Cross (LAN acessível em ambos VRFs) ----------\n`;
+      script += `add dst-address=${lanRede} gateway=${lanGateway} routing-mark=to-LINK1 \\\n`;
+      script += `    comment="RotaCross LAN em VRF LINK1"\n`;
+      script += `add dst-address=${lanRede} gateway=${lanGateway} routing-mark=to-LINK2 \\\n`;
+      script += `    comment="RotaCross LAN em VRF LINK2"\n`;
+
+      // Rotas na tabela principal (failover)
+      script += `\n# =====================================\n# Rotas na tabela principal (failover)\n# =====================================\n`;
+      script += `add dst-address=0.0.0.0/0 gateway=${b1.ifaceFinal} distance=1 check-gateway=ping \\\n`;
+      script += `    comment="Default MAIN -> LINK1 (principal)"\n`;
+      script += `add dst-address=0.0.0.0/0 gateway=${b2.ifaceFinal} distance=2 check-gateway=ping \\\n`;
+      script += `    comment="Default MAIN -> LINK2 (backup)"\n`;
+
+      // Netwatch
+      script += `\n# =====================================\n# Netwatch (opcional para monitorar links)\n# =====================================\n`;
+      script += `/tool netwatch\n`;
+      if (l1.monitor) {
+        script += `add host=${l1.monitor} interval=00:00:10 timeout=2s \\\n`;
+        script += `    comment="Monitor LINK1 - ${l1.operadora || ""}"\n`;
+      }
+      if (l2.monitor) {
+        script += `add host=${l2.monitor} interval=00:00:10 timeout=2s \\\n`;
+        script += `    comment="Monitor LINK2 - ${l2.operadora || ""}"\n`;
+      }
+
+      // Info da LAN
+      script += `\n# =====================================\n# LAN\n# =====================================\n`;
+      script += `# Rede LAN: ${lanRede} | Gateway da RB: ${lanGateway} | Interface: ${lanIface}\n`;
+      script += `# Ajuste DHCP Server / endereçamento conforme sua topologia.\n`;
+
+      return script;
+    }
+
+    document.getElementById("form-gerador").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const script = gerarScript();
+      document.getElementById("script").value = script;
+    });
+  </script>
+</body>
+</html>
