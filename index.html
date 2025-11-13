@@ -87,6 +87,19 @@
     .btn:hover {
       filter: brightness(1.05);
     }
+    .btn-secondary {
+      background: #111827;
+      color: #e5e7eb;
+      border: 1px solid #374151;
+    }
+    .btn-secondary:hover {
+      filter: brightness(1.1);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #22c55e;
+      color: #bbf7d0;
+    }
     textarea#script {
       min-height: 260px;
       font-family: "Fira Code", monospace;
@@ -116,6 +129,10 @@
       align-items: center;
       margin-bottom: 6px;
     }
+    .lb-list {
+      padding-left: 20px;
+      font-size: 0.88rem;
+    }
   </style>
 </head>
 <body>
@@ -123,7 +140,7 @@
     <div class="card">
       <h1>Gerador Load Balance Mikrotik</h1>
       <div class="subtitle">
-        Saída com <strong>VRF + RotaCross + PCC</strong> para 2 links (Load Balance + Failover).
+        Saída com <strong>VRF + Rotas Cross + Failover Automático + PCC</strong>.
       </div>
 
       <form id="form-gerador">
@@ -135,97 +152,8 @@
           </div>
           <label for="cliente">Nome do sistema/cliente</label>
           <input id="cliente" type="text" placeholder="Ex: Load Balance Filial Fortaleza">
-        </div>
-
-        <!-- LINK 1 -->
-        <div class="field-group">
-          <h2>Link 1 (principal)</h2>
-          <div class="grid">
-            <div>
-              <label for="l1_interface">Interface (física ou VLAN)</label>
-              <input id="l1_interface" type="text" placeholder="Ex: ether1 ou vlan100">
-            </div>
-            <div>
-              <label for="l1_tipo">Tipo de conexão</label>
-              <select id="l1_tipo">
-                <option value="dhcp">DHCP</option>
-                <option value="pppoe">PPPoE</option>
-              </select>
-            </div>
-            <div>
-              <label for="l1_vlan">VLAN (opcional – cria subinterface)</label>
-              <input id="l1_vlan" type="text" placeholder="Ex: 100">
-            </div>
-            <div>
-              <label for="l1_vel">Velocidade (Mbps)</label>
-              <input id="l1_vel" type="number" placeholder="Ex: 200">
-            </div>
-            <div>
-              <label for="l1_monitor">IP monitor (failover)</label>
-              <input id="l1_monitor" type="text" placeholder="Ex: 1.1.1.1">
-            </div>
-            <div>
-              <label for="l1_operadora">Operadora</label>
-              <input id="l1_operadora" type="text" placeholder="Ex: VIVO">
-            </div>
-          </div>
-          <div class="grid">
-            <div>
-              <label for="l1_user">Usuário PPPoE (se aplicável)</label>
-              <input id="l1_user" type="text" placeholder="usuario@provedor.com">
-            </div>
-            <div>
-              <label for="l1_senha">Senha PPPoE</label>
-              <input id="l1_senha" type="password" placeholder="••••••••">
-            </div>
-          </div>
           <div class="helper">
-            Para PPPoE, informe a interface física em que o discador será criado (ex: ether1).  
-            Para DHCP, o gateway será herdado automaticamente pela interface.
-          </div>
-        </div>
-
-        <!-- LINK 2 -->
-        <div class="field-group">
-          <h2>Link 2 (secundário)</h2>
-          <div class="grid">
-            <div>
-              <label for="l2_interface">Interface (física ou VLAN)</label>
-              <input id="l2_interface" type="text" placeholder="Ex: ether2 ou vlan200">
-            </div>
-            <div>
-              <label for="l2_tipo">Tipo de conexão</label>
-              <select id="l2_tipo">
-                <option value="dhcp">DHCP</option>
-                <option value="pppoe">PPPoE</option>
-              </select>
-            </div>
-            <div>
-              <label for="l2_vlan">VLAN (opcional – cria subinterface)</label>
-              <input id="l2_vlan" type="text" placeholder="Ex: 200">
-            </div>
-            <div>
-              <label for="l2_vel">Velocidade (Mbps)</label>
-              <input id="l2_vel" type="number" placeholder="Ex: 100">
-            </div>
-            <div>
-              <label for="l2_monitor">IP monitor (failover)</label>
-              <input id="l2_monitor" type="text" placeholder="Ex: 8.8.8.8">
-            </div>
-            <div>
-              <label for="l2_operadora">Operadora</label>
-              <input id="l2_operadora" type="text" placeholder="Ex: CLARO">
-            </div>
-          </div>
-          <div class="grid">
-            <div>
-              <label for="l2_user">Usuário PPPoE (se aplicável)</label>
-              <input id="l2_user" type="text" placeholder="usuario@provedor.com">
-            </div>
-            <div>
-              <label for="l2_senha">Senha PPPoE</label>
-              <input id="l2_senha" type="password" placeholder="••••••••">
-            </div>
+            Funcionalidades: Failover automático • Rotas Cross-VRF • Interface Lists dinâmicas • Load Balance inteligente
           </div>
         </div>
 
@@ -251,61 +179,252 @@
           </div>
         </div>
 
+        <!-- Links -->
+        <div class="field-group">
+          <div class="section-title">
+            <h2>Links WAN</h2>
+            <button type="button" class="btn-secondary" id="btn-add-link">Adicionar Link</button>
+          </div>
+          <div id="links-container"></div>
+          <div class="helper">
+            Máximo de 3 links. Começamos com 2 links por padrão.
+          </div>
+        </div>
+
+        <!-- Distribuição do Load Balance -->
+        <div class="field-group">
+          <h2>Distribuição do Load Balance</h2>
+          <div id="lb-distribuicao">
+            (Informe as velocidades dos links para calcular a distribuição.)
+          </div>
+          <div class="helper">
+            A distribuição é calculada proporcionalmente à velocidade de cada link. Se não houver velocidade informada, os links são divididos igualmente.
+          </div>
+        </div>
+
         <button type="submit" class="btn">Gerar Script Mikrotik</button>
       </form>
 
       <div class="field-group" style="margin-top:20px;">
         <h2>Script Gerado</h2>
         <textarea id="script" readonly></textarea>
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-secondary" id="btn-copy">Copiar Script</button>
+          <button type="button" class="btn-outline" id="btn-download-rsc">Baixar .RSC</button>
+          <button type="button" class="btn-outline" id="btn-download-txt">Baixar .TXT</button>
+        </div>
         <div class="helper">
-          Copie e cole este script no Terminal do Mikrotik. Sempre teste em laboratório antes de usar em produção.
+          Copie ou baixe o script e aplique no Terminal do Mikrotik. Sempre teste em laboratório antes de usar em produção.
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    function getLink(prefix) {
+    const MAX_LINKS = 3;
+    let linkCount = 0;
+
+    function createLinkCard(index) {
+      return `
+      <div class="field-group" style="margin-bottom:12px;">
+        <h3 style="margin-top:0; font-size:0.95rem;">Link ${index}</h3>
+        <div class="grid">
+          <div>
+            <label for="link-${index}-interface">Interface (física ou VLAN)</label>
+            <input id="link-${index}-interface" type="text" placeholder="Ex: ether${index} ou vlan${index}00">
+          </div>
+          <div>
+            <label for="link-${index}-tipo">Tipo de conexão</label>
+            <select id="link-${index}-tipo">
+              <option value="dhcp">DHCP</option>
+              <option value="pppoe">PPPoE</option>
+              <option value="static">IP Estático</option>
+            </select>
+          </div>
+          <div>
+            <label for="link-${index}-vlan">VLAN (opcional – cria subinterface)</label>
+            <input id="link-${index}-vlan" type="text" placeholder="Ex: ${index}00">
+          </div>
+          <div>
+            <label for="link-${index}-vel">Velocidade (Mbps)</label>
+            <input id="link-${index}-vel" type="number" placeholder="Ex: 200">
+          </div>
+          <div>
+            <label for="link-${index}-monitor">IP monitor (failover)</label>
+            <input id="link-${index}-monitor" type="text" placeholder="Ex: 1.1.1.1">
+          </div>
+          <div>
+            <label for="link-${index}-operadora">Operadora</label>
+            <input id="link-${index}-operadora" type="text" placeholder="Ex: VIVO">
+          </div>
+        </div>
+
+        <div class="grid static-fields" id="link-${index}-static" style="margin-top:8px; display:none;">
+          <div>
+            <label for="link-${index}-ip">IP/WAN (apenas IP Estático)</label>
+            <input id="link-${index}-ip" type="text" placeholder="Ex: 200.200.200.2/30">
+          </div>
+          <div>
+            <label for="link-${index}-gw">Gateway (apenas IP Estático)</label>
+            <input id="link-${index}-gw" type="text" placeholder="Ex: 200.200.200.1">
+          </div>
+        </div>
+
+        <div class="grid pppoe-fields" id="link-${index}-pppoe" style="margin-top:8px; display:none;">
+          <div>
+            <label for="link-${index}-user">Usuário PPPoE</label>
+            <input id="link-${index}-user" type="text" placeholder="usuario@provedor.com">
+          </div>
+          <div>
+            <label for="link-${index}-senha">Senha PPPoE</label>
+            <input id="link-${index}-senha" type="password" placeholder="••••••••">
+          </div>
+        </div>
+        <div class="helper">
+          PPPoE usa usuário/senha. DHCP e IP Estático ignoram esses campos.  
+          IP Estático usa o IP/Gateway informados acima.
+        </div>
+      </div>`;
+    }
+
+    function attachLinkEvents(index) {
+      const tipoSelect = document.getElementById(\`link-\${index}-tipo\`);
+      const velInput = document.getElementById(\`link-\${index}-vel\`);
+      const operadoraInput = document.getElementById(\`link-\${index}-operadora\`);
+
+      tipoSelect.addEventListener('change', () => {
+        updateTypeVisibility(index);
+      });
+      velInput.addEventListener('input', updateLoadBalanceDistribution);
+      operadoraInput.addEventListener('input', updateLoadBalanceDistribution);
+
+      updateTypeVisibility(index);
+    }
+
+    function updateTypeVisibility(index) {
+      const tipo = document.getElementById(\`link-\${index}-tipo\`).value;
+      const pppDiv = document.getElementById(\`link-\${index}-pppoe\`);
+      const staticDiv = document.getElementById(\`link-\${index}-static\`);
+
+      if (tipo === 'pppoe') {
+        pppDiv.style.display = 'grid';
+        staticDiv.style.display = 'none';
+      } else if (tipo === 'static') {
+        pppDiv.style.display = 'none';
+        staticDiv.style.display = 'grid';
+      } else {
+        pppDiv.style.display = 'none';
+        staticDiv.style.display = 'none';
+      }
+      updateLoadBalanceDistribution();
+    }
+
+    function addLink() {
+      if (linkCount >= MAX_LINKS) {
+        alert('Você já atingiu o limite máximo de 3 links.');
+        return;
+      }
+      linkCount++;
+      const container = document.getElementById('links-container');
+      container.insertAdjacentHTML('beforeend', createLinkCard(linkCount));
+      attachLinkEvents(linkCount);
+      updateLoadBalanceDistribution();
+
+      if (linkCount >= MAX_LINKS) {
+        const btn = document.getElementById('btn-add-link');
+        btn.disabled = true;
+        btn.textContent = 'Limite de links atingido';
+      }
+    }
+
+    function getLink(index) {
       return {
-        iface: document.getElementById(prefix + "_interface").value.trim(),
-        tipo: document.getElementById(prefix + "_tipo").value,
-        vlan: document.getElementById(prefix + "_vlan").value.trim(),
-        vel: document.getElementById(prefix + "_vel").value.trim(),
-        monitor: document.getElementById(prefix + "_monitor").value.trim(),
-        operadora: document.getElementById(prefix + "_operadora").value.trim(),
-        user: document.getElementById(prefix + "_user").value.trim(),
-        senha: document.getElementById(prefix + "_senha").value.trim()
+        idx: index,
+        iface: document.getElementById(\`link-\${index}-interface\`).value.trim(),
+        tipo: document.getElementById(\`link-\${index}-tipo\`).value,
+        vlan: document.getElementById(\`link-\${index}-vlan\`).value.trim(),
+        vel: document.getElementById(\`link-\${index}-vel\`).value.trim(),
+        monitor: document.getElementById(\`link-\${index}-monitor\`).value.trim(),
+        operadora: document.getElementById(\`link-\${index}-operadora\`).value.trim(),
+        ip: document.getElementById(\`link-\${index}-ip\`).value.trim(),
+        gw: document.getElementById(\`link-\${index}-gw\`).value.trim(),
+        user: document.getElementById(\`link-\${index}-user\`).value.trim(),
+        senha: document.getElementById(\`link-\${index}-senha\`).value.trim()
       };
     }
 
-    // configura interface do link (VLAN + PPPoE/DHCP) e devolve nome final da interface WAN
-    function gerarBlocoLink(link, idx) {
-      const n = idx; // 1 ou 2
-      let s = "";
-      const commentBase = `LINK${n} - ${link.operadora || "Operadora"}`;
-
-      // VLAN opcional – cria subinterface
-      let ifaceFinal = link.iface;
-      if (link.vlan) {
-        s += `\n/interface vlan\n`;
-        s += `add name=vlan${n}-${link.vlan} interface=${link.iface} vlan-id=${link.vlan} comment="${commentBase} VLAN"\n`;
-        ifaceFinal = `vlan${n}-${link.vlan}`;
+    function updateLoadBalanceDistribution() {
+      const lbDiv = document.getElementById('lb-distribuicao');
+      if (linkCount === 0) {
+        lbDiv.textContent = '(Nenhum link configurado.)';
+        return;
       }
 
-      // DHCP ou PPPoE
+      const links = [];
+      for (let i = 1; i <= linkCount; i++) {
+        const vel = parseFloat(document.getElementById(\`link-\${i}-vel\`).value || '0');
+        const op = document.getElementById(\`link-\${i}-operadora\`).value.trim() || \`Link \${i}\`;
+        links.push({ idx: i, vel, op });
+      }
+
+      let total = links.reduce((sum, l) => sum + (l.vel > 0 ? l.vel : 0), 0);
+      let html = '<ul class="lb-list">';
+
+      if (total === 0) {
+        const share = (100 / links.length).toFixed(1);
+        links.forEach(l => {
+          html += `<li>Link ${l.idx} (${l.op}): ${share}% (sem velocidade informada, divisão igual)</li>`;
+        });
+      } else {
+        links.forEach(l => {
+          const perc = l.vel > 0 ? (l.vel / total * 100).toFixed(1) : '0.0';
+          html += `<li>Link ${l.idx} (${l.op}, ${l.vel || 0} Mbps): ${perc}% do tráfego</li>`;
+        });
+      }
+      html += '</ul>';
+      lbDiv.innerHTML = html;
+    }
+
+    function gerarBlocoLink(link, idxLabel) {
+      let s = "";
+      const commentBase = `LINK${idxLabel} - ${link.operadora || "Operadora"}`;
+
+      let ifaceFinal = link.iface;
+      if (!ifaceFinal) {
+        return { texto: "", ifaceFinal: "", gwParam: "", commentBase };
+      }
+
+      // VLAN opcional
+      if (link.vlan) {
+        s += `\n/interface vlan\n`;
+        s += `add name=vlan${idxLabel}-${link.vlan} interface=${link.iface} vlan-id=${link.vlan} comment="${commentBase} VLAN"\n`;
+        ifaceFinal = `vlan${idxLabel}-${link.vlan}`;
+      }
+
+      let gwParam = ifaceFinal;
+
       if (link.tipo === "dhcp") {
         s += `\n/ip dhcp-client\n`;
         s += `add interface=${ifaceFinal} use-peer-dns=no add-default-route=yes disabled=no comment="${commentBase} DHCP"\n`;
       } else if (link.tipo === "pppoe") {
-        const pppName = `pppoe-link${n}`;
+        const pppName = `pppoe-link${idxLabel}`;
         s += `\n/interface pppoe-client\n`;
         s += `add name=${pppName} interface=${ifaceFinal} user="${link.user}" password="${link.senha}" disabled=no add-default-route=yes use-peer-dns=no comment="${commentBase} PPPoE"\n`;
         ifaceFinal = pppName;
+        gwParam = ifaceFinal;
+      } else if (link.tipo === "static") {
+        if (link.ip) {
+          s += `\n/ip address\n`;
+          s += `add address=${link.ip} interface=${ifaceFinal} comment="${commentBase} IP estático"\n`;
+        }
+        if (link.gw) {
+          gwParam = link.gw;
+        }
       }
 
       s += `\n# Velocidade informada: ${link.vel || "N/D"} Mbps | Monitor: ${link.monitor || "sem monitor"}\n`;
 
-      return { texto: s, ifaceFinal: ifaceFinal, commentBase: commentBase };
+      return { texto: s, ifaceFinal, gwParam, commentBase };
     }
 
     function gerarScript() {
@@ -314,82 +433,144 @@
       const lanRede = document.getElementById("lan_rede").value.trim() || "192.168.10.0/24";
       const lanGateway = document.getElementById("lan_gateway").value.trim() || "192.168.10.1";
 
-      const l1 = getLink("l1");
-      const l2 = getLink("l2");
-
       let script = "";
       script += `# =====================================\n`;
       script += `#  LOAD BALANCE + FAILOVER + VRF + ROTA CROSS\n`;
       script += `#  Gerado para: ${cliente}\n`;
       script += `# =====================================\n\n`;
 
-      // Blocos dos links (interfaces / PPPoE / DHCP)
-      const b1 = gerarBlocoLink(l1, 1);
-      const b2 = gerarBlocoLink(l2, 2);
-      script += b1.texto;
-      script += b2.texto;
+      // Coleta links válidos
+      const links = [];
+      for (let i = 1; i <= linkCount; i++) {
+        const link = getLink(i);
+        if (link.iface) {
+          links.push(link);
+        }
+      }
+
+      if (links.length === 0) {
+        script += `# Nenhum link configurado.\n`;
+        return script;
+      }
+
+      // Blocos de configuração de cada link
+      const blocos = [];
+      links.forEach((link, idx) => {
+        const label = idx + 1;
+        const b = gerarBlocoLink(link, label);
+        blocos.push(Object.assign({}, b, { label, raw: link }));
+        script += b.texto;
+      });
+
+      // Interface Lists dinâmicas
+      script += `\n# =====================================\n# Interface Lists (WAN / LAN)\n# =====================================\n`;
+      script += `/interface list\n`;
+      script += `add name=WAN comment="Links de Internet"\n`;
+      script += `add name=LAN comment="Rede interna"\n`;
+      script += `/interface list member\n`;
+      blocos.forEach(b => {
+        if (b.ifaceFinal) {
+          script += `add list=WAN interface=${b.ifaceFinal} comment="${b.commentBase}"\n`;
+        }
+      });
+      script += `add list=LAN interface=${lanIface} comment="LAN"\n`;
 
       // NAT
       script += `\n# =====================================\n# NAT (masquerade)\n# =====================================\n`;
       script += `/ip firewall nat\n`;
-      script += `add chain=srcnat out-interface=${b1.ifaceFinal} action=masquerade comment="NAT LINK1"\n`;
-      script += `add chain=srcnat out-interface=${b2.ifaceFinal} action=masquerade comment="NAT LINK2"\n`;
+      blocos.forEach(b => {
+        if (b.ifaceFinal) {
+          script += `add chain=srcnat out-interface=${b.ifaceFinal} action=masquerade comment="NAT ${b.commentBase}"\n`;
+        }
+      });
+
+      // Firewall mais fechado
+      script += `\n# =====================================\n# Firewall Filter (básico e mais fechado)\n# =====================================\n`;
+      script += `/ip firewall filter\n`;
+      script += `add chain=input connection-state=established,related action=accept comment="Aceita conexões estabelecidas/relacionadas"\n`;
+      script += `add chain=input connection-state=invalid action=drop comment="Dropa conexões inválidas"\n`;
+      script += `add chain=input in-interface-list=LAN action=accept comment="Permite acesso da LAN ao roteador"\n`;
+      script += `add chain=input protocol=icmp action=accept comment="Permite ping para diagnóstico"\n`;
+      script += `add chain=input in-interface-list=WAN action=drop comment="Bloqueia acesso direto da WAN ao roteador"\n`;
+      script += `add chain=forward connection-state=established,related action=accept comment="Forward permitido para conexões válidas"\n`;
+      script += `add chain=forward connection-state=invalid action=drop comment="Dropa forward inválido"\n`;
+      script += `add chain=forward in-interface-list=LAN out-interface-list=WAN action=accept comment="Tráfego LAN -> WAN permitido"\n`;
+      script += `add chain=forward action=drop comment="Drop padrão para o restante"\n`;
 
       // VRFs
       script += `\n# =====================================\n# VRFs\n# =====================================\n`;
       script += `/ip route vrf\n`;
-      script += `add routing-mark=to-LINK1 interfaces=${b1.ifaceFinal},${lanIface} comment="VRF LINK1"\n`;
-      script += `add routing-mark=to-LINK2 interfaces=${b2.ifaceFinal},${lanIface} comment="VRF LINK2"\n`;
+      blocos.forEach(b => {
+        if (b.ifaceFinal) {
+          script += `add routing-mark=to-LINK${b.label} interfaces=${b.ifaceFinal},${lanIface} comment="VRF LINK${b.label}"\n`;
+        }
+      });
 
-      // Mangle – PCC + marcação de rota
+      // Mangle – PCC
+      const nLinks = blocos.length;
       script += `\n# =====================================\n# Mangle – PCC + marcação de rota\n# =====================================\n`;
       script += `/ip firewall mangle\n`;
-      script += `add chain=prerouting in-interface=${lanIface} connection-mark=no-mark \\\n`;
-      script += `    action=mark-connection new-connection-mark=to-LINK1 passthrough=yes \\\n`;
-      script += `    per-connection-classifier=both-addresses-and-ports:2/0 comment="PCC -> LINK1"\n`;
-      script += `add chain=prerouting in-interface=${lanIface} connection-mark=no-mark \\\n`;
-      script += `    action=mark-connection new-connection-mark=to-LINK2 passthrough=yes \\\n`;
-      script += `    per-connection-classifier=both-addresses-and-ports:2/1 comment="PCC -> LINK2"\n`;
-      script += `add chain=prerouting in-interface=${lanIface} connection-mark=to-LINK1 \\\n`;
-      script += `    action=mark-routing new-routing-mark=to-LINK1 passthrough=no\n`;
-      script += `add chain=prerouting in-interface=${lanIface} connection-mark=to-LINK2 \\\n`;
-      script += `    action=mark-routing new-routing-mark=to-LINK2 passthrough=no\n`;
+      blocos.forEach((b, idx) => {
+        script += `add chain=prerouting in-interface=${lanIface} connection-mark=no-mark \\\n`;
+        script += `    action=mark-connection new-connection-mark=to-LINK${b.label} passthrough=yes \\\n`;
+        script += `    per-connection-classifier=both-addresses-and-ports:${nLinks}/${idx} comment="PCC -> LINK${b.label}"\n`;
+      });
+      blocos.forEach(b => {
+        script += `add chain=prerouting in-interface=${lanIface} connection-mark=to-LINK${b.label} \\\n`;
+        script += `    action=mark-routing new-routing-mark=to-LINK${b.label} passthrough=no\n`;
+      });
       script += `add chain=output connection-mark=no-mark action=mark-routing \\\n`;
       script += `    new-routing-mark=to-LINK1 passthrough=no comment="Router -> LINK1 por padrão"\n`;
 
       // Rotas com routing-mark (VRFs)
       script += `\n# =====================================\n# Rotas dentro dos VRFs (routing-mark)\n# =====================================\n`;
       script += `/ip route\n`;
-      script += `add dst-address=0.0.0.0/0 gateway=${b1.ifaceFinal} routing-mark=to-LINK1 \\\n`;
-      script += `    check-gateway=ping comment="Default VRF LINK1"\n`;
-      script += `add dst-address=0.0.0.0/0 gateway=${b2.ifaceFinal} routing-mark=to-LINK2 \\\n`;
-      script += `    check-gateway=ping comment="Default VRF LINK2"\n`;
+      blocos.forEach(b => {
+        if (b.gwParam) {
+          script += `add dst-address=0.0.0.0/0 gateway=${b.gwParam} routing-mark=to-LINK${b.label} \\\n`;
+          script += `    check-gateway=ping comment="Default VRF LINK${b.label}"\n`;
+        }
+      });
 
-      // Rota Cross – LAN em ambos VRFs
-      script += `\n# ---------- Rota Cross (LAN acessível em ambos VRFs) ----------\n`;
-      script += `add dst-address=${lanRede} gateway=${lanGateway} routing-mark=to-LINK1 \\\n`;
-      script += `    comment="RotaCross LAN em VRF LINK1"\n`;
-      script += `add dst-address=${lanRede} gateway=${lanGateway} routing-mark=to-LINK2 \\\n`;
-      script += `    comment="RotaCross LAN em VRF LINK2"\n`;
+      // Rotas Cross-LAN em todos VRFs
+      script += `\n# ---------- Rotas Cross (LAN em todos VRFs) ----------\n`;
+      blocos.forEach(b => {
+        script += `add dst-address=${lanRede} gateway=${lanGateway} routing-mark=to-LINK${b.label} \\\n`;
+        script += `    comment="RotaCross LAN em VRF LINK${b.label}"\n`;
+      });
 
       // Rotas na tabela principal (failover)
-      script += `\n# =====================================\n# Rotas na tabela principal (failover)\n# =====================================\n`;
-      script += `add dst-address=0.0.0.0/0 gateway=${b1.ifaceFinal} distance=1 check-gateway=ping \\\n`;
-      script += `    comment="Default MAIN -> LINK1 (principal)"\n`;
-      script += `add dst-address=0.0.0.0/0 gateway=${b2.ifaceFinal} distance=2 check-gateway=ping \\\n`;
-      script += `    comment="Default MAIN -> LINK2 (backup)"\n`;
+      script += `\n# =====================================\n# Rotas na tabela principal (Failover automático)\n# =====================================\n`;
+      blocos.forEach((b, idx) => {
+        if (b.gwParam) {
+          const dist = idx + 1;
+          script += `add dst-address=0.0.0.0/0 gateway=${b.gwParam} distance=${dist} check-gateway=ping \\\n`;
+          script += `    comment="Default MAIN -> LINK${b.label} (${dist === 1 ? "principal" : "backup " + dist}")"\n`;
+        }
+      });
+
+      // Queue para limitar banda quando link cair
+      script += `\n# =====================================\n# Queue simples para reduzir banda quando um link cair\n# Ajuste os valores de max-limit conforme sua necessidade.\n# =====================================\n`;
+      script += `/queue simple\n`;
+      script += `add name="QoS-Reduzida" target=${lanRede} max-limit=5M/5M disabled=yes comment="Ativada quando um link cair (Netwatch)"\n`;
 
       // Netwatch
-      script += `\n# =====================================\n# Netwatch (opcional para monitorar links)\n# =====================================\n`;
+      script += `\n# =====================================\n# Netwatch (monitoramento dos links – opcional)\n# Para o LINK1, habilitamos/desabilitamos a fila QoS-Reduzida como exemplo.\n# =====================================\n`;
       script += `/tool netwatch\n`;
-      if (l1.monitor) {
-        script += `add host=${l1.monitor} interval=00:00:10 timeout=2s \\\n`;
-        script += `    comment="Monitor LINK1 - ${l1.operadora || ""}"\n`;
-      }
-      if (l2.monitor) {
-        script += `add host=${l2.monitor} interval=00:00:10 timeout=2s \\\n`;
-        script += `    comment="Monitor LINK2 - ${l2.operadora || ""}"\n`;
-      }
+      links.forEach((l, idx) => {
+        if (l.monitor) {
+          const label = idx + 1;
+          if (label === 1) {
+            script += `add host=${l.monitor} interval=00:00:10 timeout=2s \\\n`;
+            script += `    down="/queue simple enable [find name=\\"QoS-Reduzida\\"]" \\\n`;
+            script += `    up="/queue simple disable [find name=\\"QoS-Reduzida\\"]" \\\n`;
+            script += `    comment="Monitor LINK${label} - ${l.operadora || ""} (controla QoS-Reduzida)"\n`;
+          } else {
+            script += `add host=${l.monitor} interval=00:00:10 timeout=2s \\\n`;
+            script += `    comment="Monitor LINK${label} - ${l.operadora || ""}"\n`;
+          }
+        }
+      });
 
       // Info da LAN
       script += `\n# =====================================\n# LAN\n# =====================================\n`;
@@ -399,11 +580,51 @@
       return script;
     }
 
+    function copyScript() {
+      const text = document.getElementById('script').value;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Script copiado para a área de transferência.');
+      }).catch(() => {
+        alert('Não foi possível copiar. Copie manualmente.');
+      });
+    }
+
+    function downloadFile(ext) {
+      const text = document.getElementById('script').value;
+      if (!text) return;
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `loadbalance-mikrotik.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
     document.getElementById("form-gerador").addEventListener("submit", function (e) {
       e.preventDefault();
       const script = gerarScript();
       document.getElementById("script").value = script;
     });
+
+    document.getElementById("btn-add-link").addEventListener("click", function () {
+      addLink();
+    });
+
+    document.getElementById("btn-copy").addEventListener("click", copyScript);
+    document.getElementById("btn-download-rsc").addEventListener("click", function () {
+      downloadFile('rsc');
+    });
+    document.getElementById("btn-download-txt").addEventListener("click", function () {
+      downloadFile('txt');
+    });
+
+    // Inicializa com 2 links
+    addLink();
+    addLink();
   </script>
 </body>
 </html>
